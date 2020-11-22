@@ -17,26 +17,28 @@ import math
 #
 vocab = {}
 pos = ['adj','adv','adp','conj','det','noun','num','pron','prt','verb','x','.']
-posProb = {}
-totalWords = 0
+posNum = {}
 class Solver:
     
     # Calculate the log of the posterior probability of a given sentence
     #  with a given part-of-speech labeling. Right now just returns -999 -- fix this!
     def posterior(self, model, sentence, label):
-
+        #Get total number of words in the vocab
+        totalWords = sum(sum(c.values()) for c in vocab.values())
         if model == "Simple":
             condProb = 0
             for i in range(0,len(sentence)):
+                prob = 0
                 try:
                     if vocab[sentence[i]]:
                         maxLabel = (max(vocab[sentence[i]], key=lambda k: vocab[sentence[i]][k]))
                         maxCnt = (vocab[sentence[i]][maxLabel])
-                        allCnt = (sum(vocab[sentence[i]].values()))
-                        prob = (maxCnt/allCnt)*posProb[maxLabel]
+                        #allCnt = (sum(vocab[sentence[i]].values()))
+                        prob += (maxCnt/posNum[maxLabel])
                 except KeyError:
-                    prob = (1/(totalWords + 1))
-                condProb += (round(math.log(prob),2))
+                    prob += (1/(totalWords + 1))
+                
+                condProb =  (condProb + math.log(prob))
             return condProb
         elif model == "HMM":
             return -999
@@ -56,14 +58,12 @@ class Solver:
                 else:
                     vocab[row[0][i]] = {row[1][i]:1}
         
-        totalWords = sum(sum(c.values()) for c in vocab.values())
         for p in pos:
             try:
-                pProb = (sum(x[p] for x in vocab.values() if p in x.keys()))
+                pNum = (sum(x[p] for x in vocab.values() if p in x.keys()))
             except KeyError:
                 pass
-            posProb[p] = round(pProb/totalWords if pProb != 0 else 1/(totalWords+1),2)
-
+            posNum[p] = pNum if pNum != 0 else 1
 
     # Functions for each algorithm. Right now this just returns nouns -- fix this!
     #
