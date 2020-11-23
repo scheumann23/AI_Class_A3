@@ -2,6 +2,9 @@
 # CS B551 Fall 2020, Assignment #3
 #
 # Your names and user ids:
+# Neelan Scheumann (nscheuma)
+# Vishal Bhalla (vibhalla)
+# Cody Harris (harrcody)
 #
 # (Based on skeleton code by D. Crandall)
 #
@@ -9,6 +12,7 @@
 
 import random
 import math
+from collections import defaultdict
 
 
 # We've set up a suggested code structure, but feel free to change it. Just
@@ -45,6 +49,22 @@ class Solver:
 
     # Do the training!
     #
+
+    def learn_init_probs(self, data):
+        initial_dict = defaultdict(lambda: 0)
+        for sent in data:
+            beg_word = sent[1][0]
+            initial_dict[beg_word] += 1
+        for p in pos:
+            if p in initial_dict.keys():
+                pass
+            else:
+                initial_dict[p] = 1
+        total_words = sum(initial_dict.values())
+        for key in initial_dict.keys():
+            initial_dict[key] = initial_dict[key] / total_words
+        return initial_dict
+
     def train(self, data):
         for row in data:
             for i in range(0,len(row[0])):
