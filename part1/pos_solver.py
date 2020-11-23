@@ -20,28 +20,32 @@ from collections import defaultdict
 # that we've supplied.
 #
 vocab = {}
+emProb = {}
 pos = ['adj','adv','adp','conj','det','noun','num','pron','prt','verb','x','.']
-posProb = {}
-totalWords = 0
+posNum = {}
 class Solver:
     
     # Calculate the log of the posterior probability of a given sentence
     #  with a given part-of-speech labeling. Right now just returns -999 -- fix this!
     def posterior(self, model, sentence, label):
-
+        #Get total number of words in the vocab
+        totalWords = sum(sum(c.values()) for c in vocab.values())
         if model == "Simple":
             condProb = 0
             for i in range(0,len(sentence)):
+                prob = 0
                 try:
-                    if vocab[sentence[i]]:
-                        maxLabel = (max(vocab[sentence[i]], key=lambda k: vocab[sentence[i]][k]))
-                        maxCnt = (vocab[sentence[i]][maxLabel])
-                        allCnt = (sum(vocab[sentence[i]].values()))
-                        prob = (maxCnt/allCnt)*posProb[maxLabel]
+                    if emProb[label[i]]:
+                        #maxLabel = (max(vocab[sentence[i]], key=lambda k: vocab[sentence[i]][k]))
+                        wordCnt = (emProb[label[i]][sentence[i]])
+                        #allCnt = (sum(vocab[sentence[i]].values()))
+                        prob += (wordCnt/posNum[label[i]])
                 except KeyError:
-                    prob = (1/(totalWords + 1))
-                condProb += (round(math.log(prob),2))
+                    prob += (1/(totalWords + 1))
+                
+                condProb =  (condProb + math.log(prob))
             return condProb
+
         elif model == "HMM":
             return -999
         else:
@@ -75,15 +79,22 @@ class Solver:
                         vocab[row[0][i]][row[1][i]] = 1
                 else:
                     vocab[row[0][i]] = {row[1][i]:1}
-        
-        totalWords = sum(sum(c.values()) for c in vocab.values())
+
+            for i in range(0,len(row[0])):
+                if row[1][i] in emProb:
+                    if row[0][i] in emProb[row[1][i]]:
+                        emProb[row[1][i]][row[0][i]] += 1
+                    else:
+                        emProb[row[1][i]][row[0][i]] = 1
+                else:
+                    emProb[row[1][i]] = {row[0][i]:1}
+
         for p in pos:
             try:
-                pProb = (sum(x[p] for x in vocab.values() if p in x.keys()))
+                pNum = (sum(x[p] for x in vocab.values() if p in x.keys()))
             except KeyError:
                 pass
-            posProb[p] = round(pProb/totalWords if pProb != 0 else 1/(totalWords+1),2)
-
+            posNum[p] = pNum if pNum != 0 else 1
 
     # Functions for each algorithm. Right now this just returns nouns -- fix this!
     #
@@ -95,7 +106,7 @@ class Solver:
                     # This code to get the key with max value is taken from https://stackoverflow.com/questions/268272/getting-key-with-maximum-value-in-dictionary
                     parts.append(max(vocab[word], key=lambda k: vocab[word][k]))
             except KeyError:
-                parts.append('unknown')
+                parts.append(max(posNum, key=posNum.get))
         return parts
 
     def hmm_viterbi(self, sentence):
