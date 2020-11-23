@@ -16,6 +16,7 @@ import math
 # that we've supplied.
 #
 vocab = {}
+emProb = {}
 pos = ['adj','adv','adp','conj','det','noun','num','pron','prt','verb','x','.']
 posNum = {}
 class Solver:
@@ -30,16 +31,17 @@ class Solver:
             for i in range(0,len(sentence)):
                 prob = 0
                 try:
-                    if vocab[sentence[i]]:
-                        maxLabel = (max(vocab[sentence[i]], key=lambda k: vocab[sentence[i]][k]))
-                        maxCnt = (vocab[sentence[i]][maxLabel])
+                    if emProb[label[i]]:
+                        #maxLabel = (max(vocab[sentence[i]], key=lambda k: vocab[sentence[i]][k]))
+                        wordCnt = (emProb[label[i]][sentence[i]])
                         #allCnt = (sum(vocab[sentence[i]].values()))
-                        prob += (maxCnt/posNum[maxLabel])
+                        prob += (wordCnt/posNum[label[i]])
                 except KeyError:
                     prob += (1/(totalWords + 1))
                 
                 condProb =  (condProb + math.log(prob))
             return condProb
+
         elif model == "HMM":
             return -999
         else:
@@ -57,7 +59,16 @@ class Solver:
                         vocab[row[0][i]][row[1][i]] = 1
                 else:
                     vocab[row[0][i]] = {row[1][i]:1}
-        
+
+            for i in range(0,len(row[0])):
+                if row[1][i] in emProb:
+                    if row[0][i] in emProb[row[1][i]]:
+                        emProb[row[1][i]][row[0][i]] += 1
+                    else:
+                        emProb[row[1][i]][row[0][i]] = 1
+                else:
+                    emProb[row[1][i]] = {row[0][i]:1}
+
         for p in pos:
             try:
                 pNum = (sum(x[p] for x in vocab.values() if p in x.keys()))
@@ -75,7 +86,7 @@ class Solver:
                     # This code to get the key with max value is taken from https://stackoverflow.com/questions/268272/getting-key-with-maximum-value-in-dictionary
                     parts.append(max(vocab[word], key=lambda k: vocab[word][k]))
             except KeyError:
-                parts.append('unknown')
+                parts.append(max(posNum, key=posNum.get))
         return parts
 
     def hmm_viterbi(self, sentence):
