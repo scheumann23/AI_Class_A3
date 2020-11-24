@@ -87,7 +87,7 @@ def break_code(string, corpus):
     rearrange_table = [0,1,2,3]
     random.shuffle(rearrange_table)
 
-    for i in range(20000):
+    for i in range(75000):
         # create new replacement table by swapping two values
         new_replace_table = copy.deepcopy(replace_table)
         swap_dict(new_replace_table)
@@ -113,7 +113,6 @@ def break_code(string, corpus):
         elif random.random() < math.exp(prob2 - prob1):
             rearrange_table = copy.deepcopy(new_rearrange_table)
             replace_table = copy.deepcopy(new_replace_table)
-
 
     return decode(string, replace_table, rearrange_table)
 

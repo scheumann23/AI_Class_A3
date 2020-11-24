@@ -3,9 +3,11 @@
 # Perform optical character recognition, usage:
 #     python3 ./image2text.py train-image-file.png train-text.txt test-image-file.png
 # 
-# Authors: (insert names here)
-# (based on skeleton code by D. Crandall, Oct 2020)
+# Authors:  Neelan Scheumann (nscheuma)
+#           Cody Harris (harrcody)
+#           Vishal Bhalla (vibhalla)
 #
+# (based on skeleton code by D. Crandall, Oct 2020)
 
 from PIL import Image, ImageDraw, ImageFont
 import sys
