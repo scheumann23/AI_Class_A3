@@ -13,6 +13,7 @@
 import random
 import math
 from collections import defaultdict
+from numpy import zeros, argmax
 
 
 # We've set up a suggested code structure, but feel free to change it. Just
@@ -116,7 +117,7 @@ class Solver:
             total = sum(value.values())
             for key in value.keys():
                 value[key] = value[key] / total
-
+            
         for p in pos:
                     try:
                         pNum = (sum(x[p] for x in vocab_dict.values() if p in x.keys()))
@@ -139,7 +140,39 @@ class Solver:
         return parts
 
     def hmm_viterbi(self, sentence):
-        return [ "noun" ] * len(sentence)
+        totalWords = sum(sum(c.values()) for c in vocab_dict.values())
+        # initialize matrices
+        score = zeros([len(pos), len(sentence)])
+        trace = zeros([len(pos), len(sentence)], dtype=int)
+        for i, obs in enumerate(sentence):
+            for j, st in enumerate(pos):
+                emis_bool = st in emis_dict.keys() and obs in emis_dict[st].keys()
+                if i == 0:
+                    if emis_bool and len(initial_dict.keys()) == 12:
+                        score[j][i] = emis_dict[st][obs] * initial_dict[st]
+                    else:
+                        score[j][i] = (1/(totalWords + 1)) * initial_dict[st]
+                else:
+                    prev_list = [score[a][i - 1] for a in range(len(pos))]
+                    max_this = []
+                    for p in range(len(prev_list)):
+                        if pos[p] in trans_dict.keys() and st in trans_dict[pos[p]].keys():
+                            max_this.append(prev_list[p] * trans_dict[pos[p]][st])
+                        else:
+                            max_this.append(prev_list[p] * (1/(totalWords * 5)))
+                    trace[j][i] = argmax(max_this)
+                    if emis_bool:
+                        score[j][i] = max(max_this) * emis_dict[st][obs]
+                    else:
+                        score[j][i] = max(max_this) * (1/(totalWords + 1))
+        z = argmax(score[:, -1])
+        hidden = [pos[z]]
+        for h in range(len(sentence) - 1, 0, -1):
+            prev_z = z
+            z = trace[prev_z, h]
+            hidden += [pos[z]]
+
+        return hidden[::-1]
 
     def confidence(self, sentence, answer):
         return [ 0.999 ] * len(sentence)
