@@ -11,7 +11,10 @@
 
 from PIL import Image, ImageDraw, ImageFont
 import sys
+import random
 import math
+import copy
+from collections import defaultdict
 
 CHARACTER_WIDTH=14
 CHARACTER_HEIGHT=25
@@ -53,13 +56,70 @@ def simple_model(fuzzy_img, train_letters, m):
     return "".join(seq)
 
 
+# Read the training data
 def read_data(fname):
-    exemplars = []
-    file = open(fname, 'r')
+    file = open(fname, 'r');
+    text = []
     for line in file:
         data = tuple([w for w in line.split()])
-        exemplars += [ data[0::2] ]
-    return exemplars
+        row = [r for r in data[0::2]]
+        text.append(row)
+    return text
+
+# Do the training!
+
+initial_dict = defaultdict(lambda: 0)
+trans_dict = {}
+
+def train(data):
+    #print(data)
+    TRAIN_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
+
+    # learn the initial probabilities
+
+    for row in data:
+        for word in row:
+            beg_pos = word[0]
+            initial_dict[beg_pos] += 1
+        for l in TRAIN_LETTERS:
+            if l in initial_dict.keys():
+                pass
+            else:
+                initial_dict[l] = 1
+        
+    total = sum(initial_dict.values())
+    for key in initial_dict.keys():
+        initial_dict[key] = initial_dict[key] / total
+    
+    # learn the transition probailities
+    
+    for row in data:
+        for word in row:
+            for i in range(len(word)-1):
+                if word[i] in trans_dict.keys():
+                    if word[i+1] in trans_dict[word[i]].keys():
+                         trans_dict[word[i]][word[i+1]] += 1
+                    else:
+                        trans_dict[word[i]][word[i+1]] = 1
+                else:
+                   trans_dict[word[i]] = {word[i+1]: 1}
+
+        for value in trans_dict.values():
+            for letter in TRAIN_LETTERS:
+                if letter in value.keys():
+                    pass
+                else:
+                    value[letter] = 1
+
+    for value in trans_dict.values():
+        total += sum(value.values())
+    
+
+    for value in trans_dict.values():
+        for key in value.keys():
+            value[key] = value[key] / total
+
+
 
 #####
 # main program
@@ -67,6 +127,9 @@ def read_data(fname):
 train_letters = load_training_letters(train_img_fname)
 test_letters = load_letters(test_img_fname)
 
+# Read training data and train the model
+train_data = read_data(train_txt_fname)
+train(train_data)
 
 # The final two lines of your output should look something like this:
 print("Simple: " + simple_model(test_letters, train_letters, 5))
