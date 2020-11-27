@@ -25,6 +25,8 @@ emis_dict = {}
 initial_dict = defaultdict(lambda: 0)
 trans_dict = {}
 posNum = {}
+missing_emis = 1/10000000000
+missing_tran = 1/10000000000
 pos = ['adj','adv','adp','conj','det','noun','num','pron','prt','verb','x','.']
 
 class Solver:
@@ -48,7 +50,26 @@ class Solver:
             return condProb
 
         elif model == "HMM":
-            return -999
+            condProb = 0
+            for i in range(len(sentence)):
+                emis_bool = label[i] in emis_dict.keys() and sentence[i] in emis_dict[label[i]].keys()
+                if i == 0:
+                    if emis_bool:
+                        prob = emis_dict[label[i]][sentence[i]] * initial_dict[label[i]]
+                    else:
+                        prob = missing_emis * initial_dict[label[i]]
+                else:
+                    trans_bool = label[i-1] in trans_dict.keys() and label[i] in trans_dict[label[i-1]].keys()
+                    if trans_bool and emis_bool:
+                        prob = trans_dict[label[i-1]][label[i]] * emis_dict[label[i]][sentence[i]]
+                    elif not trans_bool and emis_bool:
+                        prob = missing_tran * emis_dict[label[i]][sentence[i]]
+                    elif trans_bool and not emis_bool:
+                        prob = trans_dict[label[i-1]][label[i]] * missing_emis
+                    elif not trans_bool and not emis_bool:
+                        prob = missing_tran * missing_emis
+                condProb = (condProb + math.log(prob))
+            return condProb
         else:
             print("Unknown algo!")
 
@@ -148,10 +169,10 @@ class Solver:
             for j, st in enumerate(pos):
                 emis_bool = st in emis_dict.keys() and obs in emis_dict[st].keys()
                 if i == 0:
-                    if emis_bool and len(initial_dict.keys()) == 12:
+                    if emis_bool:
                         score[j][i] = emis_dict[st][obs] * initial_dict[st]
                     else:
-                        score[j][i] = (1/(totalWords + 1)) * initial_dict[st]
+                        score[j][i] = (missing_emis) * initial_dict[st]
                 else:
                     prev_list = [score[a][i - 1] for a in range(len(pos))]
                     max_this = []
@@ -159,12 +180,12 @@ class Solver:
                         if pos[p] in trans_dict.keys() and st in trans_dict[pos[p]].keys():
                             max_this.append(prev_list[p] * trans_dict[pos[p]][st])
                         else:
-                            max_this.append(prev_list[p] * (1/(totalWords * 5)))
+                            max_this.append(prev_list[p] * (missing_tran))
                     trace[j][i] = argmax(max_this)
                     if emis_bool:
                         score[j][i] = max(max_this) * emis_dict[st][obs]
                     else:
-                        score[j][i] = max(max_this) * (1/(totalWords + 1))
+                        score[j][i] = max(max_this) * (missing_emis)
         z = argmax(score[:, -1])
         hidden = [pos[z]]
         for h in range(len(sentence) - 1, 0, -1):
