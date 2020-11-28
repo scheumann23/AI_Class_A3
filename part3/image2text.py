@@ -129,28 +129,28 @@ def train(data):
     return initial_dict, trans_dict
 
 
-def hmm_viterbi(self, sentence):
+def hmm_viterbi(fuzzy_img, train_letters):
     TRAIN_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
     #totalWords = sum(sum(c.values()) for c in vocab_dict.values())
     # initialize matrices
-    score = np.zeros([len(TRAIN_LETTERS), len(sentence)])
-    trace = np.zeros([len(TRAIN_LETTERS), len(sentence)], dtype=int)
-    for i, obs in enumerate(sentence):
+    score = np.zeros([len(TRAIN_LETTERS), len(fuzzy_img)])
+    trace = np.zeros([len(TRAIN_LETTERS), len(fuzzy_img)], dtype=int)
+    for i, obs in enumerate(fuzzy_img):
         for j, st in enumerate(TRAIN_LETTERS):
             if i == 0:
-                score[j][i] = emis_prob(obs, train_letters[st], 5) * initial_dict[st]
+                score[j][i] = emis_prob(obs, train_letters[st], 25) + math.log(initial_dict[st])
             else:
                 prev_list = [score[a][i - 1] for a in range(len(TRAIN_LETTERS))]
                 max_this = []
                 for p in range(len(prev_list)):
-                    max_this.append(prev_list[p] * trans_dict[TRAIN_LETTERS[p]][st])
+                    max_this.append(prev_list[p] + math.log(trans_dict[TRAIN_LETTERS[p]][st]))
                 
                 trace[j][i] = np.argmax(max_this)
-                score[j][i] = max(max_this) * emis_prob(obs, train_letters[st], 5)
+                score[j][i] = max(max_this) + emis_prob(obs, train_letters[st], 25)
 
     z = np.argmax(score[:, -1])
     hidden = [TRAIN_LETTERS[z]]
-    for h in range(len(sentence) - 1, 0, -1):
+    for h in range(len(fuzzy_img) - 1, 0, -1):
         prev_z = z
         z = trace[prev_z, h]
         hidden += [TRAIN_LETTERS[z]]
@@ -168,7 +168,5 @@ train_data = read_data(train_txt_fname)
 train(train_data)
 
 # The final two lines of your output should look something like this:
-print("Simple: " + simple_model(test_letters, train_letters, 5))
-print("   HMM: " + "Sample simple result") 
-
-
+print("Simple: " + simple_model(test_letters, train_letters, 25))
+print("   HMM: " + ''.join(hmm_viterbi(test_letters, train_letters)) )
