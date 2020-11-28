@@ -14,6 +14,8 @@ import sys
 import random
 import math
 import copy
+import re
+import numpy as np
 from collections import defaultdict
 
 CHARACTER_WIDTH=14
@@ -55,16 +57,26 @@ def simple_model(fuzzy_img, train_letters, m):
         seq.append(max_let)
     return "".join(seq)
 
-
 # Read the training data
+
+def strip_labels(string):
+    output = re.sub(' ADJ | ADV | ADP | CONJ | DET | NOUN | NUM | PRON | PRT | VERB | X |\n', ' ', string)
+    output = re.sub(' \'\' . ', '\" ', output)
+    output = re.sub(r' \`\` . ', ' \"', output)
+    output = re.sub(r'\`\` . ', '\"', output)
+    output = re.sub(' , . ', ', ', output)
+    output = re.sub(r' \? . ', '? ', output)
+    output = re.sub(r' \! . ', '! ', output)
+    output = re.sub(' . . ', '. ', output)
+    output = re.sub('    ', '', output)
+    return output
+
 def read_data(fname):
-    file = open(fname, 'r');
-    text = []
+    exemplars = []
+    file = open(fname, 'r')
     for line in file:
-        data = tuple([w for w in line.split()])
-        row = [r for r in data[0::2]]
-        text.append(row)
-    return text
+        exemplars += [ strip_labels(line) ]
+    return exemplars
 
 # Do the training!
 
@@ -78,14 +90,13 @@ def train(data):
     # learn the initial probabilities
 
     for row in data:
-        for word in row:
-            beg_pos = word[0]
-            initial_dict[beg_pos] += 1
-        for l in TRAIN_LETTERS:
-            if l in initial_dict.keys():
-                pass
-            else:
-                initial_dict[l] = 1
+        beg_pos = row[0]
+        initial_dict[beg_pos] += 1
+    for l in TRAIN_LETTERS:
+        if l in initial_dict.keys():
+            pass
+        else:
+            initial_dict[l] = 1
         
     total = sum(initial_dict.values())
     for key in initial_dict.keys():
@@ -94,36 +105,61 @@ def train(data):
     # learn the transition probailities
     
     for row in data:
-        for word in row:
-            for i in range(len(word)-1):
-                if word[i] in trans_dict.keys():
-                    if word[i+1] in trans_dict[word[i]].keys():
-                         trans_dict[word[i]][word[i+1]] += 1
-                    else:
-                        trans_dict[word[i]][word[i+1]] = 1
+        for i in range(len(row)-1):
+            if row[i] in trans_dict.keys():
+                if row[i+1] in trans_dict[row[i]].keys():
+                        trans_dict[row[i]][row[i+1]] += 1
                 else:
-                   trans_dict[word[i]] = {word[i+1]: 1}
-
-        for value in trans_dict.values():
-            for letter in TRAIN_LETTERS:
-                if letter in value.keys():
-                    pass
-                else:
-                    value[letter] = 1
+                    trans_dict[row[i]][row[i+1]] = 1
+            else:
+                trans_dict[row[i]] = {row[i+1]: 1}
 
     for value in trans_dict.values():
-        total += sum(value.values())
-    
+        for letter in TRAIN_LETTERS:
+            if letter in value.keys():
+                pass
+            else:
+                value[letter] = 1
 
     for value in trans_dict.values():
+        total = sum(value.values())
         for key in value.keys():
             value[key] = value[key] / total
 
+    return initial_dict, trans_dict
 
+
+def hmm_viterbi(self, sentence):
+    TRAIN_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
+    #totalWords = sum(sum(c.values()) for c in vocab_dict.values())
+    # initialize matrices
+    score = np.zeros([len(TRAIN_LETTERS), len(sentence)])
+    trace = np.zeros([len(TRAIN_LETTERS), len(sentence)], dtype=int)
+    for i, obs in enumerate(sentence):
+        for j, st in enumerate(TRAIN_LETTERS):
+            if i == 0:
+                score[j][i] = emis_prob(obs, train_letters[st], 5) * initial_dict[st]
+            else:
+                prev_list = [score[a][i - 1] for a in range(len(TRAIN_LETTERS))]
+                max_this = []
+                for p in range(len(prev_list)):
+                    max_this.append(prev_list[p] * trans_dict[TRAIN_LETTERS[p]][st])
+                
+                trace[j][i] = np.argmax(max_this)
+                score[j][i] = max(max_this) * emis_prob(obs, train_letters[st], 5)
+
+    z = np.argmax(score[:, -1])
+    hidden = [TRAIN_LETTERS[z]]
+    for h in range(len(sentence) - 1, 0, -1):
+        prev_z = z
+        z = trace[prev_z, h]
+        hidden += [TRAIN_LETTERS[z]]
+
+    return hidden[::-1]
 
 #####
 # main program
-(train_img_fname, train_txt_fname, test_img_fname) = sys.argv[1:]
+train_img_fname, train_txt_fname, test_img_fname = sys.argv[1:]
 train_letters = load_training_letters(train_img_fname)
 test_letters = load_letters(test_img_fname)
 
