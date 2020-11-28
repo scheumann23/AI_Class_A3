@@ -25,8 +25,8 @@ emis_dict = {}
 initial_dict = defaultdict(lambda: 0)
 trans_dict = {}
 posNum = {}
-missing_emis = 1/10000000000
-missing_tran = 1/10000000000
+missing_emis = 1/10000000
+missing_tran = 1/10000000
 pos = ['adj','adv','adp','conj','det','noun','num','pron','prt','verb','x','.']
 
 class Solver:
@@ -196,7 +196,53 @@ class Solver:
         return hidden[::-1]
 
     def confidence(self, sentence, answer):
-        return [ 0.999 ] * len(sentence)
+        #Code based on example of variable elimination from variable_elimination.py
+        #Provided by David Crandall in Fall 2020 CSCI
+        conf_list = []
+        tau = {}
+        N = len(sentence)
+        for M in range(len(sentence)):
+            for i in range(0, M):
+                tau[i+1] = { s:0 for s in pos }
+                for s in pos:
+                    for s2 in pos:
+                        emis_bool = s2 in emis_dict.keys() and sentence[i] in emis_dict[s2].keys()
+                        trans_bool = s2 in trans_dict.keys() and s in trans_dict[s2].keys()
+                        if emis_bool and trans_bool:
+                            tau[i+1][s] += (tau[i][s2] if i > 0 else initial_dict[s2]) * emis_dict[s2][sentence[i]] * trans_dict[s2][s]
+                        elif emis_bool and not trans_bool:
+                            tau[i+1][s] += (tau[i][s2] if i > 0 else initial_dict[s2]) * emis_dict[s2][sentence[i]] * missing_tran
+                        elif not emis_bool and trans_bool:
+                            tau[i+1][s] += (tau[i][s2] if i > 0 else initial_dict[s2]) * missing_emis * trans_dict[s2][s]
+                        elif not emis_bool and not trans_bool:
+                            tau[i+1][s] += (tau[i][s2] if i > 0 else initial_dict[s2]) * missing_emis * missing_tran
+                        
+            for i in range(N-1, M, -1):
+                tau[i] = { s:0 for s in pos }
+                for s in pos:
+                    for s2 in pos:
+                        emis_bool = s2 in emis_dict.keys() and sentence[i] in emis_dict[s2].keys()
+                        trans_bool = s in trans_dict.keys() and s2 in trans_dict[s].keys()
+                        if emis_bool and trans_bool:
+                            tau[i][s] += (tau[i+1][s2] if i+1 < N else 1) * emis_dict[s2][sentence[i]] * trans_dict[s][s2]
+                        elif emis_bool and not trans_bool:
+                            tau[i][s] += (tau[i+1][s2] if i+1 < N else 1) * emis_dict[s2][sentence[i]] * missing_tran
+                        elif not emis_bool and trans_bool:
+                            tau[i][s] += (tau[i+1][s2] if i+1 < N else 1) * missing_emis * trans_dict[s][s2]
+                        elif not emis_bool and not trans_bool:
+                            tau[i][s] += (tau[i+1][s2] if i+1 < N else 1) * missing_emis * missing_tran
+            
+            joint = {}
+            for s in pos:
+                emis_bool = s in emis_dict.keys() and sentence[M] in emis_dict[s].keys()
+                if emis_bool:
+                    joint[s] = (1 if M == 0 else tau[M][s]) * (1 if M == len(sentence)-1 else tau[M+1][s]) * emis_dict[s][sentence[M]]
+                else:
+                    joint[s] = (1 if M == 0 else tau[M][s]) * (1 if M == len(sentence)-1 else tau[M+1][s]) * missing_emis
+            j_sum = sum(joint.values())
+            total_joints = { j:joint[j] / j_sum for j in joint }
+            conf_list +=  [0.999 if round(total_joints[answer[M]], 3) == 1.0 else round(total_joints[answer[M]], 3)]
+        return conf_list
 
 
     # This solve() method is called by label.py, so you should keep the interface the
