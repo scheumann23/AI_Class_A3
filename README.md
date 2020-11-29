@@ -32,9 +32,7 @@ First we train the program on the test data provided. As part of the training we
 
 ## Problems, Assumptions, Simplifications, and Design Choices
 
-As the number of combinations for replacement table is many magnitudes higher than the rearrangement table we rearrange the table once every 100 iterations. The program takes up to 75000 iterations for us to successfully scramble the files. 
-
-
+As the number of combinations for replacement table is many magnitudes higher than the rearrangement table we rearrange the table once every 100 iterations. 
 
 # Part 3: Reading Text
 
