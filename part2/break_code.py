@@ -92,7 +92,7 @@ def break_code(string, corpus):
     rearrange_table = [0,1,2,3]
     random.shuffle(rearrange_table)
 
-    for i in range(5000):
+    for i in range(10000):
         # create new replacement table by swapping two values
         new_replace_table = copy.deepcopy(replace_table)
         swap_dict(new_replace_table)
