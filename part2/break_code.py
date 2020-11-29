@@ -23,7 +23,7 @@ letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
 def train(corpus):
     data = corpus.split()
 
-    # learn the initial probabilities
+    # learn the initial counts
     initial_dict = defaultdict(lambda: 0)
     for word in data:
         beg_pos = word[0]
@@ -34,11 +34,12 @@ def train(corpus):
             else:
                 initial_dict[l] = 1
 
+    # convert the counts to probabilities
     total = sum(initial_dict.values())
     for key in initial_dict.keys():
         initial_dict[key] = initial_dict[key] / total
 
-    # learn the transition probailities
+    # learn the transition counts
     trans_dict = {}
     for word in data:
         for i in range(len(word)-1):
@@ -50,6 +51,7 @@ def train(corpus):
             else:
                 trans_dict[word[i]] = {word[i+1]: 1}
 
+    # make sure each possible transition exists at least once
     for value in trans_dict.values():
         for letter in letters:
             if letter in value.keys():
@@ -57,6 +59,7 @@ def train(corpus):
             else:
                 value[letter] = 1
 
+    # convert the counts to probabilities
     for value in trans_dict.values():
         total = sum(value.values())
         for key in value.keys():
@@ -64,11 +67,13 @@ def train(corpus):
 
     return initial_dict, trans_dict
 
+# taken from code in encode.py by David Crandall
 def decode(str, replace, rearrange):
     str2 = str.translate({ ord(i):ord(replace[i]) for i in replace })
     str2 +=  ' ' * (len(rearrange)-(len(str2) %  len(rearrange)))
     return "".join(["".join([str2[rearrange[j] + i] for j in range(0, len(rearrange))]) for i in range(0, len(str), len(rearrange))])
 
+# swap two entries in a dictionary to create a new one
 def swap_dict(dictionary):
     i, j = random.choices(list(dictionary.keys()), k=2)
     dictionary[i], dictionary[j] = dictionary[j], dictionary[i]
@@ -87,13 +92,13 @@ def break_code(string, corpus):
     rearrange_table = [0,1,2,3]
     random.shuffle(rearrange_table)
 
-    for i in range(75000):
+    for i in range(5000):
         # create new replacement table by swapping two values
         new_replace_table = copy.deepcopy(replace_table)
         swap_dict(new_replace_table)
 
-        # create new rearrange table but only every 100 iterations
-        if i % 100 == 0:
+        # create new rearrange table but only every 25 iterations
+        if i % 25 == 0:
             new_rearrange_table = [0,1,2,3]
             random.shuffle(new_rearrange_table)
         else:
@@ -107,15 +112,18 @@ def break_code(string, corpus):
         prob1 = prob(decode1, initial_dict, trans_dict)
         prob2 = prob(decode2, initial_dict, trans_dict)
 
+        # replace tables if newer one is better
         if prob2 > prob1:
             rearrange_table = copy.deepcopy(new_rearrange_table)
             replace_table = copy.deepcopy(new_replace_table)
+        # if new one is worse replace with probabilty equal to p2/p1
         elif random.random() < math.exp(prob2 - prob1):
             rearrange_table = copy.deepcopy(new_rearrange_table)
             replace_table = copy.deepcopy(new_replace_table)
 
     return decode(string, replace_table, rearrange_table)
 
+# calculate how "english" the sentence is. Smaller magnitude is "better" 
 def prob(string, initial_dict, trans_dict):
     doc_prob = 0
     word_list = string.split()

@@ -3,9 +3,9 @@
 ## Problem Formulation
 
 The problem consists of three subparts. We are asked to:
-	### Perform simple POS tagging based on the simple Bayes Net 
-	### Perform POS tagging using the sophisticatedBayes Net using HMM/Viterbi Algorithm 
-	### Calculate the confidence level(marginal probabilities) on our tagging using Viterbi 
+- Perform simple POS tagging based on the simple Bayes Net 
+- Perform POS tagging using the sophisticatedBayes Net using HMM/Viterbi Algorithm 
+- Calculate the confidence level(marginal probabilities) on our tagging using Viterbi 
 
 ## How the Program Works
 
@@ -17,8 +17,6 @@ There are specific functions that perform the Viterbi, HMM based probability cal
 
 The first problem that we faced was to decide on a data structure to use. We considered list of lists, dictionary of tuples etc and decided on dictionary of dictionaries given its ease of lookup. We had earlier been storing the numbers/counts in the dictionary and with having to convert the same to probabilities at multiple places we decided to save the probabilities directly. 
 
-
-
 # Part 2: Code Breaking
 
 ## Problem Formulation
@@ -27,12 +25,12 @@ The problem provides us with some text files that have been encoded using a repl
 
 ## How the Program Works
 
-First we train the program on the test data provided. As part of the training we create a dictionary with transition probabilities word by word and one with initial probabilities. We randomly prepare a alphabet mapping table and a rearrangement table and unscramble the input based on these tables. Thereafter we calculate the probabilities of the unscrambled file and compare with initial probabilities. If the new probabilities are greater we set the initial probabilities equal to the new probabilities and the new rearrangement and replacement tables replace the earlier ones. If the new probabilities are smaller we take the ration of newer to initial probabilities and based on a threshold we shuffle the rearrangement and replacement tables.
+First we train the program on the test data provided. As part of the training we create a dictionary with transition probabilities word by word and one with initial probabilities. We randomly prepare a alphabet mapping table and a rearrangement table and unscramble the input based on these tables. Thereafter we calculate the probabilities of the unscrambled file and compare with initial probabilities. If the new probabilities are greater we set the initial probabilities equal to the new probabilities and the new rearrangement and replacement tables replace the earlier ones. If the new probabilities are smaller we take the ratio of newer to initial probabilities and based on a threshold we shuffle the rearrangement and replacement tables.
 
 
 ## Problems, Assumptions, Simplifications, and Design Choices
 
-As the number of combinations for replacement table is many magnitudes higher than the rearrangement table we rearrange the table once every 100 iterations. The program takes up to 75000 iterations for us to successfully scramble the files. 
+As the number of combinations for replacement table is many magnitudes higher than the rearrangement table we rearrange the table once every 25 iterations. The program takes up to 10000 iterations for us to successfully unscramble the files. 
 
 
 
@@ -49,4 +47,4 @@ From the train data we strip out the POS tags and the doubled punctuations, and 
 
 ## Problems, Assumptions, Simplifications, and Design Choices
 
-The data from the Part 1 above has been chosen as the training data as it has properly formed sentences instead of words as in case of Part 2. 
+The data from the Part 1 above has been chosen as the training data as it has properly formed sentences instead of words as in case of Part 2. We also chose to use a "noise" parameter in the emmission probability calc of 25. This produced the best results. If it was too low, it failed to distinguish similar letters and if it was too high, the code assumed everything was one letter, e.g. 'AAAAAAAAAAAAAAAAAAAAAA'

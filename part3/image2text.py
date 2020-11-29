@@ -38,27 +38,7 @@ def load_training_letters(fname):
     letter_images = load_letters(fname)
     return { TRAIN_LETTERS[i]: letter_images[i] for i in range(0, len(TRAIN_LETTERS) ) }
 
-def emis_prob(pic1, pic2, m):
-    counter = sum([1 if pic1[r][c] == pic2[r][c] else 0 for c in range(len(pic1[0])) for r in range(len(pic1))])
-    log_prob = 350 * math.log(m/100) + counter * math.log((100-m)/m)
-    return log_prob
-
-def simple_model(fuzzy_img, train_letters, m):
-    seq = []
-    TRAIN_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
-    for i in range(len(fuzzy_img)):
-        max_let = ''
-        max_prob = -100000000
-        for let in TRAIN_LETTERS:
-            temp_prob = emis_prob(fuzzy_img[i], train_letters[let], m)
-            if temp_prob > max_prob:
-                max_prob = temp_prob
-                max_let = let
-        seq.append(max_let)
-    return "".join(seq)
-
-# Read the training data
-
+# Strip out unneccessary labels from the bc.train file so we are left with only grammatically correct english sentences
 def strip_labels(string):
     output = re.sub(' ADJ | ADV | ADP | CONJ | DET | NOUN | NUM | PRON | PRT | VERB | X |\n', ' ', string)
     output = re.sub(' \'\' . ', '\" ', output)
@@ -71,6 +51,7 @@ def strip_labels(string):
     output = re.sub('    ', '', output)
     return output
 
+# read in the data
 def read_data(fname):
     exemplars = []
     file = open(fname, 'r')
@@ -87,8 +68,7 @@ def train(data):
     #print(data)
     TRAIN_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
 
-    # learn the initial probabilities
-
+    # learn the initial counts
     for row in data:
         beg_pos = row[0]
         initial_dict[beg_pos] += 1
@@ -97,13 +77,13 @@ def train(data):
             pass
         else:
             initial_dict[l] = 1
-        
+    
+    # convert to probabilities
     total = sum(initial_dict.values())
     for key in initial_dict.keys():
         initial_dict[key] = initial_dict[key] / total
     
-    # learn the transition probailities
-    
+    # learn the transition counts
     for row in data:
         for i in range(len(row)-1):
             if row[i] in trans_dict.keys():
@@ -114,6 +94,7 @@ def train(data):
             else:
                 trans_dict[row[i]] = {row[i+1]: 1}
 
+    # make sure each transition is accounted for at least once
     for value in trans_dict.values():
         for letter in TRAIN_LETTERS:
             if letter in value.keys():
@@ -121,6 +102,7 @@ def train(data):
             else:
                 value[letter] = 1
 
+    # convert to probabilities
     for value in trans_dict.values():
         total = sum(value.values())
         for key in value.keys():
@@ -128,10 +110,35 @@ def train(data):
 
     return initial_dict, trans_dict
 
+# the emission probabilities are conputer on the fly instead of learned from the training data
+# this takes two 400-pixel images, in this case one ground truth iamge and one fuzzy image, and counts how many
+# pixels are the same. Then, assuming that m% of the pixels are fuzzy it computes a probability score that the
+# images are the same
+def emis_prob(pic1, pic2, m):
+    counter = sum([1 if pic1[r][c] == pic2[r][c] else 0 for c in range(len(pic1[0])) for r in range(len(pic1))])
+    log_prob = 350 * math.log(m/100) + counter * math.log((100-m)/m)
+    return log_prob
 
+# this model compares each character in the fuzzy image to each of the ground truth training examples and returns
+# the character that has the highest probability
+def simple_model(fuzzy_img, train_letters, m):
+    seq = []
+    TRAIN_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
+    for i in range(len(fuzzy_img)):
+        max_let = ''
+        max_prob = -100000000
+        for let in TRAIN_LETTERS:
+            temp_prob = emis_prob(fuzzy_img[i], train_letters[let], m)
+            if temp_prob > max_prob:
+                max_prob = temp_prob
+                max_let = let
+        seq.append(max_let)
+    return "".join(seq)
+
+# implements the Viterbi algorithm 
+# based on the same code we used in Part 1
 def hmm_viterbi(fuzzy_img, train_letters):
     TRAIN_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
-    #totalWords = sum(sum(c.values()) for c in vocab_dict.values())
     # initialize matrices
     score = np.zeros([len(TRAIN_LETTERS), len(fuzzy_img)])
     trace = np.zeros([len(TRAIN_LETTERS), len(fuzzy_img)], dtype=int)
