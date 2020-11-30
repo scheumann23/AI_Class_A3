@@ -13,9 +13,17 @@ First we train the program on the test data provided. As part of the training we
 
 There are specific functions that perform the Viterbi, HMM based probability calculation and simple probability calculations.
 
+To determine HMM posterior probability, we simply take the model and the predicted parts of speech and multiply the initial part of speech probability by the emmission probability of that part of speech for that word. Then we go through the rest of the words in the sentence multiplying by the transition to the next part of speech and the emission probability for that word. As we go along we are taking the log of each probability and summing it.
+
+The Viterbi function is a classic version of the Viterbi algorithm where all possible parts of speech are evaluated for each word and then the most probable chain of parts of speech are selected as the output.
+
+Lastly the confidence uses a variable elimination algorithm pased upon the code provided in variable_elimination.py.
+
 ## Problems, Assumptions, Simplifications, and Design Choices
 
 The first problem that we faced was to decide on a data structure to use. We considered list of lists, dictionary of tuples etc and decided on dictionary of dictionaries given its ease of lookup. We had earlier been storing the numbers/counts in the dictionary and with having to convert the same to probabilities at multiple places we decided to save the probabilities directly. 
+
+The major assumption in this program is the probability to use when there is a missing transition, or emission probability. We handled all possible initial probabilities when we created the dictionary. If the transition or emission probability used when the actual probability is missing in the training set is too large, then it creates bad results for the path taken in the Viterbi algorithm. After experimentation, we settled on 1e-7 as the probability when a transmission or emission probability is missing and this gave us good results.
 
 # Part 2: Code Breaking
 
